@@ -195,9 +195,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
 
         console.log('Initialization complete.');
-    } catch (error) {
-        console.error('Error initializing AR scene:', error);
-    }
+    } 
 
 
 
