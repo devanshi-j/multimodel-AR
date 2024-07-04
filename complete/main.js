@@ -97,7 +97,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const placeButton = document.querySelector("#place");
     const cancelButton = document.querySelector("#cancel");
     placeButton.addEventListener('beforexrselect', (e) => {
-      //e.preventDefault();
+    e.preventDefault();
     });
      placeButton.addEventListener('click', (e) => {
      e.preventDefault();
