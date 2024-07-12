@@ -3,25 +3,29 @@ import * as THREE from '../libs/three123/three.module.js';
 import { ARButton } from '../libs/jsm/ARButton.js';
 
 const normalizeModel = (obj, height) => {
+  // scale it according to height
   const bbox = new THREE.Box3().setFromObject(obj);
   const size = bbox.getSize(new THREE.Vector3());
   obj.scale.multiplyScalar(height / size.y);
+
+  // reposition to center
   const bbox2 = new THREE.Box3().setFromObject(obj);
   const center = bbox2.getCenter(new THREE.Vector3());
   obj.position.set(-center.x, -center.y, -center.z);
 }
 
+// recursively set opacity
 const setOpacity = (obj, opacity) => {
-  obj.children.forEach((child) => {
+  obj.traverse((child) => {
     setOpacity(child, opacity);
   });
   if (obj.material) {
-    obj.material.format = THREE.RGBAFormat;
+    obj.material.transparent = true; // enable transparency
     obj.material.opacity = opacity;
-    obj.material.transparent = true;  // Ensure material is transparent
   }
 }
 
+// make clone object not sharing materials
 const deepClone = (obj) => {
   const newObj = obj.clone();
   newObj.traverse((o) => {
@@ -45,11 +49,7 @@ document.addEventListener('DOMContentLoaded', () => {
     renderer.setSize(window.innerWidth, window.innerHeight);
     renderer.xr.enabled = true;
 
-    const arButton = ARButton.createButton(renderer, {
-      requiredFeatures: ['hit-test'],
-      optionalFeatures: ['dom-overlay'],
-      domOverlay: { root: document.body }
-    });
+    const arButton = ARButton.createButton(renderer, { requiredFeatures: ['hit-test'], optionalFeatures: ['dom-overlay'], domOverlay: { root: document.body } });
     document.body.appendChild(renderer.domElement);
     document.body.appendChild(arButton);
 
@@ -70,6 +70,8 @@ document.addEventListener('DOMContentLoaded', () => {
     let selectedItem = null;
     let prevTouchPosition = null;
     let touchDown = false;
+    let interactingItem = null; // Variable to track the placed item being interacted with
+    const placedItems = []; // Array to keep track of placed items
 
     const itemButtons = document.querySelector("#item-buttons");
     const confirmButtons = document.querySelector("#confirm-buttons");
@@ -84,7 +86,6 @@ document.addEventListener('DOMContentLoaded', () => {
       itemButtons.style.display = "none";
       confirmButtons.style.display = "block";
     }
-
     const cancelSelect = () => {
       itemButtons.style.display = "block";
       confirmButtons.style.display = "none";
@@ -96,7 +97,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const placeButton = document.querySelector("#place");
     const cancelButton = document.querySelector("#cancel");
-    placeButton.addEventListener('beforexrselect', (e) => {
+    placeButton.addEventListener('touchstart', (e) => {
       e.preventDefault();
     });
     placeButton.addEventListener('click', (e) => {
@@ -105,11 +106,11 @@ document.addEventListener('DOMContentLoaded', () => {
       const spawnItem = deepClone(selectedItem);
       setOpacity(spawnItem, 1.0);
       scene.add(spawnItem);
-      attachInteractionListeners(spawnItem);
+      placedItems.push(spawnItem); // Add the spawned item to placed items
+      attachInteractionListeners(spawnItem); // Attach interaction listeners to the spawned item
       cancelSelect();
     });
-
-    cancelButton.addEventListener('beforexrselect', (e) => {
+    cancelButton.addEventListener('touchstart', (e) => {
       e.preventDefault();
     });
     cancelButton.addEventListener('click', (e) => {
@@ -120,7 +121,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     for (let i = 0; i < items.length; i++) {
       const el = document.querySelector("#item" + i);
-      el.addEventListener('beforexrselect', (e) => {
+      el.addEventListener('touchstart', (e) => {
         e.preventDefault();
       });
       el.addEventListener('click', (e) => {
@@ -148,29 +149,31 @@ document.addEventListener('DOMContentLoaded', () => {
       renderer.setAnimationLoop((timestamp, frame) => {
         if (!frame) return;
 
-        const referenceSpace = renderer.xr.getReferenceSpace();
-        if (touchDown && selectedItem) {
+        const referenceSpace = renderer.xr.getReferenceSpace(); // ARButton requested 'local' reference space
+
+        // Touch interaction logic with interactingItem instead of selectedItem
+        if (touchDown && interactingItem) {
           const viewerMatrix = new THREE.Matrix4().fromArray(frame.getViewerPose(referenceSpace).transform.inverse.matrix);
           const newPosition = controller.position.clone();
           newPosition.applyMatrix4(viewerMatrix);
           if (prevTouchPosition) {
             const deltaX = newPosition.x - prevTouchPosition.x;
             const deltaZ = newPosition.y - prevTouchPosition.y;
-            selectedItem.rotation.y += deltaX * 30;
+            interactingItem.rotation.y += deltaX * 30;
           }
           prevTouchPosition = newPosition;
         }
 
-        if (selectedItem) {
+        placedItems.forEach((item) => {
           const hitTestResults = frame.getHitTestResults(hitTestSource);
           if (hitTestResults.length) {
             const hit = hitTestResults[0];
-            selectedItem.visible = true;
-            selectedItem.position.setFromMatrixPosition(new THREE.Matrix4().fromArray(hit.getPose(referenceSpace).transform.matrix));
+            item.visible = true;
+            item.position.setFromMatrixPosition(new THREE.Matrix4().fromArray(hit.getPose(referenceSpace).transform.matrix));
           } else {
-            selectedItem.visible = false;
+            item.visible = false;
           }
-        }
+        });
 
         renderer.render(scene, camera);
       });
@@ -183,6 +186,7 @@ document.addEventListener('DOMContentLoaded', () => {
         child.userData.selectable = true;
         child.addEventListener('click', (e) => {
           console.log("Object clicked", child);
+          interactingItem = object; // Set the clicked object as the interacting item
         });
       }
     });
