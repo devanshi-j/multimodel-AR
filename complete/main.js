@@ -3,29 +3,24 @@ import * as THREE from '../libs/three123/three.module.js';
 import { ARButton } from '../libs/jsm/ARButton.js';
 
 const normalizeModel = (obj, height) => {
-    // Scale it according to height
     const bbox = new THREE.Box3().setFromObject(obj);
     const size = bbox.getSize(new THREE.Vector3());
     obj.scale.multiplyScalar(height / size.y);
-
-    // Reposition to center
     const bbox2 = new THREE.Box3().setFromObject(obj);
     const center = bbox2.getCenter(new THREE.Vector3());
     obj.position.set(-center.x, -center.y, -center.z);
 };
 
-// Recursively set opacity
 const setOpacity = (obj, opacity) => {
     obj.children.forEach((child) => {
         setOpacity(child, opacity);
     });
     if (obj.material) {
-        obj.material.format = THREE.RGBAFormat; // Required for opacity
+        obj.material.format = THREE.RGBAFormat;
         obj.material.opacity = opacity;
     }
 };
 
-// Make clone object not sharing materials
 const deepClone = (obj) => {
     const newObj = obj.clone();
     newObj.traverse((o) => {
@@ -56,9 +51,8 @@ document.addEventListener('DOMContentLoaded', () => {
         const itemNames = ['chair', 'coffee-table', 'cushion'];
         const itemHeights = [0.5, 0.7, 0.05];
         const items = [];
-        const placedItems = []; // Array to store placed items
+        const placedItems = [];
 
-        // Load models
         for (let i = 0; i < itemNames.length; i++) {
             const model = await loadGLTF(`../assets/models/${itemNames[i]}/scene.gltf`);
             normalizeModel(model.scene, itemHeights[i]);
@@ -100,14 +94,12 @@ document.addEventListener('DOMContentLoaded', () => {
         const placeButton = document.querySelector("#place");
         const cancelButton = document.querySelector("#cancel");
 
-        // Cancel selection logic before placing
         cancelButton.addEventListener('click', (e) => {
             e.preventDefault();
             e.stopPropagation();
-            cancelSelect(); // Cancel selection
+            cancelSelect();
         });
 
-        // Item button listeners
         items.forEach((item, i) => {
             const el = document.querySelector(`#item${i}`);
             el.addEventListener('click', (e) => {
@@ -124,12 +116,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 const spawnItem = deepClone(selectedItem);
                 setOpacity(spawnItem, 1.0);
                 scene.add(spawnItem);
-                placedItems.push(spawnItem); // Add to placedItems array
-                cancelSelect(); // Reset selection after placement
+                placedItems.push(spawnItem);
+                cancelSelect();
             }
         });
 
-        // Controller and interaction logic...
         const controller = renderer.xr.getController(0);
         scene.add(controller);
 
@@ -137,46 +128,49 @@ document.addEventListener('DOMContentLoaded', () => {
         let initialDistance = null;
         let initialScale = null;
 
-        // Start touch event listeners
         controller.addEventListener('selectstart', () => {
             touchDown = true;
-            // Start dragging
             if (placedItems.length > 0) {
                 isDragging = true;
-                // Initialize scale
                 initialDistance = null;
-                initialScale = placedItems[0].scale.clone(); // Store the initial scale of the first placed item
+                initialScale = placedItems[0].scale.clone();
             }
         });
 
         controller.addEventListener('selectend', () => {
             touchDown = false;
             isDragging = false;
-            initialDistance = null; // Reset distance on end
+            initialDistance = null;
         });
 
-        // Start session
         renderer.xr.addEventListener("sessionstart", async () => {
             const session = renderer.xr.getSession();
-            const viewerReferenceSpace = await session.requestReferenceSpace("viewer");
-            const hitTestSource = await session.requestHitTestSource({ space: viewerReferenceSpace });
+            const referenceSpace = await session.requestReferenceSpace("local-floor");
+                       const hitTestSource = await session.requestHitTestSource({ space: referenceSpace });
 
             renderer.setAnimationLoop((timestamp, frame) => {
                 if (!frame) return;
 
-                const referenceSpace = renderer.xr.getReferenceSpace();
                 const hitTestResults = frame.getHitTestResults(hitTestSource);
+                const referenceSpace = renderer.xr.getReferenceSpace();
 
-                // Update item positions and visibility
-                placedItems.forEach((item) => {
-                    if (hitTestResults.length) {
-                        const hit = hitTestResults[0];
-                        item.visible = true;
-                        item.position.setFromMatrixPosition(new THREE.Matrix4().fromArray(hit.getPose(referenceSpace).transform.matrix));
-                    } else {
-                        item.visible = false;
+                // Update item positions and visibility based on hit test results
+                if (hitTestResults.length) {
+                    const hit = hitTestResults[0];
+                    const position = new THREE.Vector3().setFromMatrixPosition(new THREE.Matrix4().fromArray(hit.getPose(referenceSpace).transform.matrix));
+
+                    placedItems.forEach((item) => {
+                        item.visible = true; // Ensure items remain visible
+                        item.position.copy(position); // Move the item to the hit position
+                    });
+                } else {
+                    // Only hide the item if it's not being dragged
+                    if (!isDragging) {
+                        placedItems.forEach((item) => {
+                            item.visible = false; // Hide if there are no hit test results
+                        });
                     }
-                });
+                }
 
                 // Dragging and scaling logic
                 if (isDragging) {
@@ -186,11 +180,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
                         // Move all placed items
                         placedItems.forEach((item) => {
-                            item.position.copy(position); // Move the placed item
+                            item.position.copy(position);
                         });
 
                         if (initialDistance === null) {
-                            // Calculate initial distance if it's the first frame of drag
                             const position1 = new THREE.Vector3().setFromMatrixPosition(controller.matrixWorld);
                             const position2 = new THREE.Vector3().setFromMatrixPosition(controller.matrixWorld); // Use second controller if available
                             initialDistance = position1.distanceTo(position2);
@@ -212,11 +205,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (touchDown) {
                     const viewerMatrix = new THREE.Matrix4().fromArray(frame.getViewerPose(referenceSpace).transform.inverse.matrix);
                     const newPosition = controller.position.clone();
-                    newPosition.applyMatrix4(viewerMatrix); // Change to viewer coordinate
+                    newPosition.applyMatrix4(viewerMatrix);
                     if (prevTouchPosition) {
                         const deltaX = newPosition.x - prevTouchPosition.x;
                         placedItems.forEach((item) => {
-                            item.rotation.y += deltaX * 30;
+                            item.rotation.y += deltaX * 30; // Rotate based on the change in position
                         });
                     }
                     prevTouchPosition = newPosition;
