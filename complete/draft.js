@@ -70,6 +70,7 @@ document.addEventListener('DOMContentLoaded', () => {
             scene.add(item);
         }
 
+        let selectedItem = null;
         let prevTouchPosition = null;
         let touchDown = false;
 
@@ -82,6 +83,7 @@ document.addEventListener('DOMContentLoaded', () => {
             items.forEach((item) => {
                 item.visible = item === selectItem;
             });
+            selectedItem = selectItem;
             itemButtons.style.display = "none";
             confirmButtons.style.display = "block";
         };
@@ -89,7 +91,10 @@ document.addEventListener('DOMContentLoaded', () => {
         const cancelSelect = () => {
             itemButtons.style.display = "block";
             confirmButtons.style.display = "none";
-            items.forEach(item => item.visible = false); // Hide all items
+            if (selectedItem) {
+                selectedItem.visible = false;
+            }
+            selectedItem = null;
         };
 
         const placeButton = document.querySelector("#place");
@@ -115,7 +120,6 @@ document.addEventListener('DOMContentLoaded', () => {
         placeButton.addEventListener('click', (e) => {
             e.preventDefault();
             e.stopPropagation();
-            const selectedItem = items.find(item => item.visible); // Find the visible item
             if (selectedItem) {
                 const spawnItem = deepClone(selectedItem);
                 setOpacity(spawnItem, 1.0);
@@ -205,7 +209,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
 
                 // Rotate items if touched
-                if (touchDown && placedItems) {
+                if (touchDown) {
                     const viewerMatrix = new THREE.Matrix4().fromArray(frame.getViewerPose(referenceSpace).transform.inverse.matrix);
                     const newPosition = controller.position.clone();
                     newPosition.applyMatrix4(viewerMatrix); // Change to viewer coordinate
@@ -221,10 +225,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 renderer.render(scene, camera);
             });
         });
-
-        // Initialize AR session
-      //  await initialize(); // Only call this once
     };
 
-    initialize(); // Call the initialize function
+    initialize();
 });
