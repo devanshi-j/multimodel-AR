@@ -6,6 +6,7 @@ const normalizeModel = (obj, height) => {
     const bbox = new THREE.Box3().setFromObject(obj);
     const size = bbox.getSize(new THREE.Vector3());
     obj.scale.multiplyScalar(height / size.y);
+
     const bbox2 = new THREE.Box3().setFromObject(obj);
     const center = bbox2.getCenter(new THREE.Vector3());
     obj.position.set(-center.x, -center.y, -center.z);
@@ -67,6 +68,9 @@ document.addEventListener('DOMContentLoaded', () => {
         let selectedItem = null;
         let prevTouchPosition = null;
         let touchDown = false;
+        let isPinching = false;
+        let initialDistance = null;
+        let dragging = false;
 
         const itemButtons = document.querySelector("#item-buttons");
         const confirmButtons = document.querySelector("#confirm-buttons");
@@ -124,95 +128,78 @@ document.addEventListener('DOMContentLoaded', () => {
         const controller = renderer.xr.getController(0);
         scene.add(controller);
 
-        let isDragging = false;
-        let initialDistance = null;
-        let initialScale = null;
-
         controller.addEventListener('selectstart', () => {
             touchDown = true;
-            if (placedItems.length > 0) {
-                isDragging = true;
-                initialDistance = null;
-                initialScale = placedItems[0].scale.clone();
-            }
         });
 
         controller.addEventListener('selectend', () => {
             touchDown = false;
-            isDragging = false;
-            initialDistance = null;
+            prevTouchPosition = null;
+            dragging = false;
         });
 
         renderer.xr.addEventListener("sessionstart", async () => {
             const session = renderer.xr.getSession();
-            const referenceSpace = await session.requestReferenceSpace("local-floor");
-                       const hitTestSource = await session.requestHitTestSource({ space: referenceSpace });
+            const viewerReferenceSpace = await session.requestReferenceSpace("viewer");
+            const hitTestSource = await session.requestHitTestSource({ space: viewerReferenceSpace });
+
+            session.addEventListener('inputsourceschange', () => {
+                const sources = session.inputSources;
+                if (sources.length === 2) {
+                    isPinching = true;
+                    initialDistance = sources[0].gamepad.axes[1] - sources[1].gamepad.axes[1];
+                } else {
+                    isPinching = false;
+                    initialDistance = null;
+                }
+            });
 
             renderer.setAnimationLoop((timestamp, frame) => {
                 if (!frame) return;
 
-                const hitTestResults = frame.getHitTestResults(hitTestSource);
                 const referenceSpace = renderer.xr.getReferenceSpace();
+                const hitTestResults = frame.getHitTestResults(hitTestSource);
 
-                // Update item positions and visibility based on hit test results
-                if (hitTestResults.length) {
+                if (selectedItem && hitTestResults.length) {
                     const hit = hitTestResults[0];
-                    const position = new THREE.Vector3().setFromMatrixPosition(new THREE.Matrix4().fromArray(hit.getPose(referenceSpace).transform.matrix));
+                    const hitPose = hit.getPose(referenceSpace);
 
-                    placedItems.forEach((item) => {
-                        item.visible = true; // Ensure items remain visible
-                        item.position.copy(position); // Move the item to the hit position
-                    });
-                } else {
-                    // Only hide the item if it's not being dragged
-                    if (!isDragging) {
-                        placedItems.forEach((item) => {
-                            item.visible = false; // Hide if there are no hit test results
-                        });
-                    }
+                    selectedItem.visible = true;
+                    selectedItem.position.setFromMatrixPosition(new THREE.Matrix4().fromArray(hitPose.transform.matrix));
+                    setOpacity(selectedItem, 1.0);
+                    placedItems.push(selectedItem);
+                    selectedItem = null;
+                    cancelSelect();
                 }
 
-                // Dragging and scaling logic
-                if (isDragging) {
-                    if (hitTestResults.length) {
-                        const hit = hitTestResults[0];
-                        const position = new THREE.Vector3().setFromMatrixPosition(new THREE.Matrix4().fromArray(hit.getPose(referenceSpace).transform.matrix));
-
-                        // Move all placed items
-                        placedItems.forEach((item) => {
-                            item.position.copy(position);
-                        });
-
-                        if (initialDistance === null) {
-                            const position1 = new THREE.Vector3().setFromMatrixPosition(controller.matrixWorld);
-                            const position2 = new THREE.Vector3().setFromMatrixPosition(controller.matrixWorld); // Use second controller if available
-                            initialDistance = position1.distanceTo(position2);
-                        } else {
-                            const currentPosition1 = new THREE.Vector3().setFromMatrixPosition(controller.matrixWorld);
-                            const currentPosition2 = new THREE.Vector3().setFromMatrixPosition(controller.matrixWorld); // Use second controller if available
-                            const currentDistance = currentPosition1.distanceTo(currentPosition2);
-                            const scaleFactor = currentDistance / initialDistance;
-
-                            // Scale all placed items
-                            placedItems.forEach((item) => {
-                                item.scale.copy(initialScale).multiplyScalar(scaleFactor);
-                            });
-                        }
-                    }
-                }
-
-                // Rotate items if touched
-                if (touchDown) {
-                    const viewerMatrix = new THREE.Matrix4().fromArray(frame.getViewerPose(referenceSpace).transform.inverse.matrix);
+                if (touchDown && placedItems.length > 0) {
                     const newPosition = controller.position.clone();
-                    newPosition.applyMatrix4(viewerMatrix);
                     if (prevTouchPosition) {
                         const deltaX = newPosition.x - prevTouchPosition.x;
+
                         placedItems.forEach((item) => {
-                            item.rotation.y += deltaX * 30; // Rotate based on the change in position
+                            item.rotation.y += deltaX * 4.0; // Faster rotation
+
+                            if (dragging) {
+                                const deltaY = newPosition.y - prevTouchPosition.y;
+                                item.position.x += deltaX;
+                                item.position.y += deltaY;
+                            }
                         });
                     }
                     prevTouchPosition = newPosition;
+                }
+
+                if (isPinching && placedItems.length > 0 && initialDistance !== null) {
+                    const sources = session.inputSources;
+                    const currentDistance = sources[0].gamepad.axes[1] - sources[1].gamepad.axes[1];
+                    const scaleFactor = currentDistance / initialDistance;
+
+                    placedItems.forEach((item) => {
+                        item.scale.multiplyScalar(scaleFactor);
+                    });
+
+                    initialDistance = currentDistance; // Update for smooth scaling
                 }
 
                 renderer.render(scene, camera);
