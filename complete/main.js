@@ -70,7 +70,7 @@ document.addEventListener('DOMContentLoaded', () => {
         let touchDown = false;
         let isPinching = false;
         let initialDistance = null;
-        let dragging = false;
+        let dragging = true;
 
         const itemButtons = document.querySelector("#item-buttons");
         const confirmButtons = document.querySelector("#confirm-buttons");
@@ -178,12 +178,13 @@ document.addEventListener('DOMContentLoaded', () => {
                         const deltaX = newPosition.x - prevTouchPosition.x;
 
                         placedItems.forEach((item) => {
-                            item.rotation.y += deltaX * 4.0; // Faster rotation
+                            item.rotation.y += deltaX * 8.0; // Faster rotation
 
                             if (dragging) {
                                 const deltaY = newPosition.y - prevTouchPosition.y;
                                 item.position.x += deltaX;
                                 item.position.y += deltaY;
+                                item.position.z += deltaZ;
                             }
                         });
                     }
