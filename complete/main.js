@@ -13,13 +13,12 @@ const normalizeModel = (obj, height) => {
 };
 
 const setOpacity = (obj, opacity) => {
-    obj.children.forEach((child) => {
-        setOpacity(child, opacity);
+    obj.traverse((child) => {
+        if (child.isMesh) {
+            child.material.transparent = true;
+            child.material.opacity = opacity;
+        }
     });
-    if (obj.material) {
-        obj.material.format = THREE.RGBAFormat;
-        obj.material.opacity = opacity;
-    }
 };
 
 const deepClone = (obj) => {
@@ -70,7 +69,6 @@ document.addEventListener('DOMContentLoaded', () => {
         let touchDown = false;
         let isPinching = false;
         let initialDistance = null;
-        let dragging = false;
 
         const itemButtons = document.querySelector("#item-buttons");
         const confirmButtons = document.querySelector("#confirm-buttons");
@@ -121,7 +119,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 setOpacity(spawnItem, 1.0);
                 scene.add(spawnItem);
                 placedItems.push(spawnItem);
-                cancelSelect();
+                cancelSelect(); // Hide the selected model and reset selection
             }
         });
 
@@ -135,7 +133,6 @@ document.addEventListener('DOMContentLoaded', () => {
         controller.addEventListener('selectend', () => {
             touchDown = false;
             prevTouchPosition = null;
-            dragging = false;
         });
 
         renderer.xr.addEventListener("sessionstart", async () => {
@@ -167,9 +164,6 @@ document.addEventListener('DOMContentLoaded', () => {
                     selectedItem.visible = true;
                     selectedItem.position.setFromMatrixPosition(new THREE.Matrix4().fromArray(hitPose.transform.matrix));
                     setOpacity(selectedItem, 1.0);
-                    placedItems.push(selectedItem);
-                    selectedItem = null;
-                    cancelSelect();
                 }
 
                 if (touchDown && placedItems.length > 0) {
@@ -177,28 +171,20 @@ document.addEventListener('DOMContentLoaded', () => {
                     if (prevTouchPosition) {
                         const deltaX = newPosition.x - prevTouchPosition.x;
 
-                        placedItems.forEach((item) => {
-                            item.rotation.y += deltaX * 6.0; // Faster rotation
-
-                            if (dragging) {
-                                const deltaY = newPosition.y - prevTouchPosition.y;
-                                item.position.x += deltaX;
-                                item.position.y += deltaY;
-                                //item.position.z += deltaZ;
-                            }
-                        });
+                        const lastItem = placedItems[placedItems.length - 1];
+                        lastItem.rotation.y += deltaX * 6.0; // Faster rotation
                     }
                     prevTouchPosition = newPosition;
                 }
 
+                // Pinching logic
                 if (isPinching && placedItems.length > 0 && initialDistance !== null) {
                     const sources = session.inputSources;
                     const currentDistance = sources[0].gamepad.axes[1] - sources[1].gamepad.axes[1];
                     const scaleFactor = currentDistance / initialDistance;
 
-                    placedItems.forEach((item) => {
-                        item.scale.multiplyScalar(scaleFactor);
-                    });
+                    const lastItem = placedItems[placedItems.length - 1];
+                    lastItem.scale.multiplyScalar(scaleFactor);
 
                     initialDistance = currentDistance; // Update for smooth scaling
                 }
