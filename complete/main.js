@@ -31,13 +31,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const model = await loadGLTF('../assets/models/chair/scene.gltf');
         normalizeModel(model.scene, 0.5);
-        const item = new THREE.Group();
-        item.add(model.scene);
-        item.visible = false;
-        scene.add(item);
+        const chair = new THREE.Group();
+        chair.add(model.scene);
+        chair.visible = false;
+        scene.add(chair);
 
-        let selectedItem = item;
-        let placedItem = null;
         let prevTouchPosition = null;
         let touchDown = false;
         let isPinching = false;
@@ -49,28 +47,8 @@ document.addEventListener('DOMContentLoaded', () => {
         const controller = renderer.xr.getController(0);
         scene.add(controller);
 
-        const selectItem = (item) => {
-            if (placedItem !== item) {
-                placedItem = item;
-            }
-        };
-
         controller.addEventListener('selectstart', () => {
             touchDown = true;
-
-            if (placedItem) {
-                const tempMatrix = new THREE.Matrix4();
-                tempMatrix.identity().extractRotation(controller.matrixWorld);
-
-                raycaster.ray.origin.setFromMatrixPosition(controller.matrixWorld);
-                raycaster.ray.direction.set(0, 0, -1).applyMatrix4(tempMatrix);
-
-                const intersects = raycaster.intersectObject(placedItem, true);
-
-                if (intersects.length > 0) {
-                    selectItem(intersects[0].object.parent);
-                }
-            }
         });
 
         controller.addEventListener('selectend', () => {
@@ -110,26 +88,26 @@ document.addEventListener('DOMContentLoaded', () => {
                 const referenceSpace = renderer.xr.getReferenceSpace();
                 const hitTestResults = frame.getHitTestResults(hitTestSource);
 
-                if (selectedItem && hitTestResults.length && !placedItem) {
+                if (hitTestResults.length && !chair.visible) {
                     const hit = hitTestResults[0];
                     const hitPose = hit.getPose(referenceSpace);
 
-                    selectedItem.visible = true;
-                    selectedItem.position.setFromMatrixPosition(new THREE.Matrix4().fromArray(hitPose.transform.matrix));
+                    chair.visible = true;
+                    chair.position.setFromMatrixPosition(new THREE.Matrix4().fromArray(hitPose.transform.matrix));
                 }
 
-                // Handle interactions with the placed item
-                if (touchDown && placedItem) {
+                // Handle interactions with the placed chair
+                if (touchDown && chair.visible) {
                     const newPosition = controller.position.clone();
                     if (prevTouchPosition) {
                         const deltaX = newPosition.x - prevTouchPosition.x;
-                        placedItem.rotation.y += deltaX * 6.0; // Faster rotation
+                        chair.rotation.y += deltaX * 6.0; // Faster rotation
                     }
                     prevTouchPosition = newPosition;
                 }
 
-                // Handling two-finger dragging
-                if (isDraggingWithTwoFingers && placedItem) {
+                                // Handling two-finger dragging
+                if (isDraggingWithTwoFingers && chair.visible) {
                     const sources = session.inputSources;
                     const currentFingerPositions = [
                         new THREE.Vector3(sources[0].gamepad.axes[0], sources[0].gamepad.axes[1], 0),
@@ -139,21 +117,21 @@ document.addEventListener('DOMContentLoaded', () => {
                     const deltaX = (currentFingerPositions[0].x - initialFingerPositions[0].x + currentFingerPositions[1].x - initialFingerPositions[1].x) / 2;
                     const deltaY = (currentFingerPositions[0].y - initialFingerPositions[0].y + currentFingerPositions[1].y - initialFingerPositions[1].y) / 2;
 
-                    placedItem.position.x += deltaX;
-                    placedItem.position.y += deltaY;
+                    chair.position.x += deltaX;
+                    chair.position.y += deltaY;
 
                     initialFingerPositions = currentFingerPositions;
                 }
 
                 // Handling pinch to scale
-                if (isPinching && placedItem && initialDistance !== null) {
+                if (isPinching && chair.visible && initialDistance !== null) {
                     const sources = session.inputSources;
                     const currentDistance = Math.sqrt(
                         Math.pow(sources[0].gamepad.axes[0] - sources[1].gamepad.axes[0], 2) +
                         Math.pow(sources[0].gamepad.axes[1] - sources[1].gamepad.axes[1], 2)
                     );
                     const scaleChange = currentDistance / initialDistance;
-                    placedItem.scale.multiplyScalar(scaleChange);
+                    chair.scale.multiplyScalar(scaleChange);
 
                     initialDistance = currentDistance;
                 }
@@ -166,3 +144,4 @@ document.addEventListener('DOMContentLoaded', () => {
 
     initialize();
 });
+
