@@ -106,7 +106,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     prevTouchPosition = newPosition;
                 }
 
-                                // Handling two-finger dragging
+                // Handling two-finger dragging
                 if (isDraggingWithTwoFingers && chair.visible) {
                     const sources = session.inputSources;
                     const currentFingerPositions = [
@@ -144,4 +144,3 @@ document.addEventListener('DOMContentLoaded', () => {
 
     initialize();
 });
-
