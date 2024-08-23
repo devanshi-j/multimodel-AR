@@ -29,7 +29,7 @@ document.addEventListener('DOMContentLoaded', () => {
         document.body.appendChild(renderer.domElement);
         document.body.appendChild(arButton);
 
-        const model = await loadGLTF('../assets/models/chair/scene.gltf');
+        const model = await loadGLTF('../assets/models/coffee-table/scene.gltf');
         normalizeModel(model.scene, 0.5);
         const chair = new THREE.Group();
         chair.add(model.scene);
