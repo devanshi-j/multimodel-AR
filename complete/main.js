@@ -37,7 +37,7 @@ document.addEventListener('DOMContentLoaded', () => {
         normalizeModel(model.scene, 0.5);
         const coffeeTable = new THREE.Group();
         coffeeTable.add(model.scene);
-        coffeeTable.visible = false;
+        coffeeTable.visible = false; // Initially invisible
         scene.add(coffeeTable);
 
         // Keep track of selected part and texture image
