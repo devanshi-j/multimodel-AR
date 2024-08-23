@@ -29,26 +29,47 @@ document.addEventListener('DOMContentLoaded', () => {
         document.body.appendChild(renderer.domElement);
         document.body.appendChild(arButton);
 
-        const model = await loadGLTF('../assets/models/chair/scene.gltf');
+        const model = await loadGLTF('../assets/models/coffee-table/scene.gltf');
         normalizeModel(model.scene, 0.5);
         const chair = new THREE.Group();
         chair.add(model.scene);
         chair.visible = false;
         scene.add(chair);
 
+        // Keep track of selected part and texture image
         let selectedPart = null;
         let selectedTextureImage = null;
 
-        const textures = {
-            wood: new THREE.TextureLoader().load('../assets/textures/wood.jpg'),
-            leather: new THREE.TextureLoader().load('../assets/textures/leather.jpg'),
-            fabric: new THREE.TextureLoader().load('../assets/textures/fabric.jpg')
+        // Old Textures loaded initially
+        const oldTextures = {
+            steel: new THREE.TextureLoader().load('../assets/models/coffee-table/textures/Old_Steel_normal.png'),
+            gloss: new THREE.TextureLoader().load('../assets/models/coffee-table/textures/Old_Steel_specularGlossiness.png'),
+            wood: new THREE.TextureLoader().load('../assets/models/coffee-table/textures/Table_wood_1_diffuse.jpeg'),
+            wood: new THREE.TextureLoader().load('../assets/models/coffee-table/textures/Table_wood_1_normal.jpeg')
         };
 
+        // New Textures to be loaded when replacing
+        const newTextures = {
+            wood: new THREE.TextureLoader().load('../assets/textures/tx1.jpg'),
+            wood: new THREE.TextureLoader().load('../assets/textures/tx2.jpg'),
+            wood: new THREE.TextureLoader().load('../assets/textures/tx3.jpg')
+        };
+
+        // Apply old textures to model initially
+        model.scene.traverse(child => {
+            if (child.isMesh) {
+                if (child.material.map) {
+                    child.material.map = oldTextures.wood;  // Example: set to wood
+                }
+            }
+        });
+
+        // Selectors for texture images and buttons
         const textureImages = document.querySelectorAll('.texture-image');
         const replaceButton = document.getElementById('replace-button');
         const textureOptions = document.getElementById('texture-options');
 
+        // Event listener for selecting a texture image
         textureImages.forEach(img => {
             img.addEventListener('click', () => {
                 selectedTextureImage = img;
@@ -58,13 +79,15 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         });
 
+        // Event listener for the replace button
         replaceButton.addEventListener('click', () => {
             textureOptions.style.display = 'block';
         });
 
+        // Event listener for applying the new texture
         textureOptions.addEventListener('click', event => {
             if (event.target.tagName === 'IMG') {
-                const newTexture = textures[event.target.getAttribute('data-texture')];
+                const newTexture = newTextures[event.target.getAttribute('data-texture')];
                 if (selectedPart) {
                     selectedPart.material.map = newTexture;
                     selectedPart.material.needsUpdate = true;
@@ -74,6 +97,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
 
+        // Helper function to find the part with the selected texture
         const getPartWithTexture = (object, textureName) => {
             let part = null;
             object.traverse(child => {
@@ -84,6 +108,7 @@ document.addEventListener('DOMContentLoaded', () => {
             return part;
         };
 
+        // AR session and hit-test for model placement
         renderer.xr.addEventListener("sessionstart", async () => {
             const session = renderer.xr.getSession();
             const viewerReferenceSpace = await session.requestReferenceSpace("viewer");
