@@ -25,42 +25,56 @@ document.addEventListener('DOMContentLoaded', () => {
         renderer.setSize(window.innerWidth, window.innerHeight);
         renderer.xr.enabled = true;
 
-        const arButton = ARButton.createButton(renderer, { requiredFeatures: ['hit-test'], optionalFeatures: ['dom-overlay'], domOverlay: { root: document.body } });
+        const arButton = ARButton.createButton(renderer, { 
+            requiredFeatures: ['hit-test'], 
+            optionalFeatures: ['dom-overlay'], 
+            domOverlay: { root: document.body } 
+        });
         document.body.appendChild(renderer.domElement);
         document.body.appendChild(arButton);
 
         const model = await loadGLTF('../assets/models/coffee-table/scene.gltf');
         normalizeModel(model.scene, 0.5);
-        const chair = new THREE.Group();
-        chair.add(model.scene);
-        chair.visible = false;
-        scene.add(chair);
+        const coffeeTable = new THREE.Group();
+        coffeeTable.add(model.scene);
+        coffeeTable.visible = false;
+        scene.add(coffeeTable);
 
         // Keep track of selected part and texture image
         let selectedPart = null;
         let selectedTextureImage = null;
 
-        // Old Textures loaded initially
+        // Old Textures loaded initially with unique keys
         const oldTextures = {
-            steel: new THREE.TextureLoader().load('../assets/models/coffee-table/textures/Old_Steel_normal.png'),
-            gloss: new THREE.TextureLoader().load('../assets/models/coffee-table/textures/Old_Steel_specularGlossiness.png'),
-            wood: new THREE.TextureLoader().load('../assets/models/coffee-table/textures/Table_wood_1_diffuse.jpeg'),
-            wood: new THREE.TextureLoader().load('../assets/models/coffee-table/textures/Table_wood_1_normal.jpeg')
+            steelNormal: new THREE.TextureLoader().load('../assets/models/coffee-table/textures/Old_Steel_normal.png'),
+            steelGloss: new THREE.TextureLoader().load('../assets/models/coffee-table/textures/Old_Steel_specularGlossiness.png'),
+            woodDiffuse: new THREE.TextureLoader().load('../assets/models/coffee-table/textures/Table_wood_1_diffuse.jpeg'),
+            woodNormal: new THREE.TextureLoader().load('../assets/models/coffee-table/textures/Table_wood_1_normal.jpeg')
         };
 
-        // New Textures to be loaded when replacing
+        // New Textures to be loaded when replacing with unique keys
         const newTextures = {
-            wood: new THREE.TextureLoader().load('../assets/textures/tx1.jpg'),
-            wood: new THREE.TextureLoader().load('../assets/textures/tx2.jpg'),
-            wood: new THREE.TextureLoader().load('../assets/textures/tx3.jpg')
+            woodTx1: new THREE.TextureLoader().load('../assets/textures/tx1.jpg'),
+            woodTx2: new THREE.TextureLoader().load('../assets/textures/tx2.jpg'),
+            woodTx3: new THREE.TextureLoader().load('../assets/textures/tx3.jpg')
         };
 
-        // Apply old textures to model initially
+        // Apply old textures to model initially using selective traversal
         model.scene.traverse(child => {
-            if (child.isMesh) {
-                if (child.material.map) {
-                    child.material.map = oldTextures.wood;  // Example: set to wood
+            if (child.isMesh && child.material && child.material.map) {
+                // Preserve original textures based on their source
+                const textureSrc = child.material.map.image.src.toLowerCase(); // Convert to lowercase for case-insensitive comparison
+
+                if (textureSrc.includes('table_wood_1_diffuse')) {
+                    child.material.map = oldTextures.woodDiffuse;
+                } else if (textureSrc.includes('table_wood_1_normal')) {
+                    child.material.map = oldTextures.woodNormal;
+                } else if (textureSrc.includes('old_steel_normal')) {
+                    child.material.map = oldTextures.steelNormal;
+                } else if (textureSrc.includes('old_steel_specularglossiness')) {
+                    child.material.map = oldTextures.steelGloss;
                 }
+                // Add more conditions for other textures as needed
             }
         });
 
@@ -87,8 +101,9 @@ document.addEventListener('DOMContentLoaded', () => {
         // Event listener for applying the new texture
         textureOptions.addEventListener('click', event => {
             if (event.target.tagName === 'IMG') {
-                const newTexture = newTextures[event.target.getAttribute('data-texture')];
-                if (selectedPart) {
+                const selectedNewTextureKey = event.target.getAttribute('data-texture');
+                const newTexture = newTextures[selectedNewTextureKey];
+                if (selectedPart && newTexture) {
                     selectedPart.material.map = newTexture;
                     selectedPart.material.needsUpdate = true;
                 }
@@ -101,8 +116,11 @@ document.addEventListener('DOMContentLoaded', () => {
         const getPartWithTexture = (object, textureName) => {
             let part = null;
             object.traverse(child => {
-                if (child.isMesh && child.material.map && child.material.map.image.src.includes(textureName)) {
-                    part = child;
+                if (child.isMesh && child.material && child.material.map) {
+                    const textureSrc = child.material.map.image.src.toLowerCase();
+                    if (textureSrc.includes(textureName.toLowerCase())) {
+                        part = child;
+                    }
                 }
             });
             return part;
@@ -120,12 +138,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 const referenceSpace = renderer.xr.getReferenceSpace();
                 const hitTestResults = frame.getHitTestResults(hitTestSource);
 
-                if (hitTestResults.length && !chair.visible) {
+                if (hitTestResults.length && !coffeeTable.visible) {
                     const hit = hitTestResults[0];
                     const hitPose = hit.getPose(referenceSpace);
 
-                    chair.visible = true;
-                    chair.position.setFromMatrixPosition(new THREE.Matrix4().fromArray(hitPose.transform.matrix));
+                    coffeeTable.visible = true;
+                    coffeeTable.position.setFromMatrixPosition(new THREE.Matrix4().fromArray(hitPose.transform.matrix));
                 }
 
                 renderer.render(scene, camera);
