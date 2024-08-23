@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AR Model Placement</title>
+  <style>
+    body {
+      margin: 0;
+      overflow: hidden;
+    }
+    .texture-image {
+      width: 50px;
+      height: 50px;
+      margin: 5px;
+      cursor: pointer;
+    }
+    #replace-button {
+      display: none;
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      padding: 10px;
+      background-color: #008CBA;
+      color: white;
+      cursor: pointer;
+    }
+    #texture-options {
+      display: none;
+      position: absolute;
+      top: 70px;
+      right: 10px;
+      background-color: rgba(255, 255, 255, 0.8);
+      padding: 10px;
+      border-radius: 5px;
+    }
+    #texture-options img {
+      width: 50px;
+      height: 50px;
+      margin: 5px;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+  <div id="textures">
+    <img src="../assets/textures/wood.jpg" data-texture="wood" class="texture-image">
+    <img src="../assets/textures/leather.jpg" data-texture="leather" class="texture-image">
+    <img src="../assets/textures/fabric.jpg" data-texture="fabric" class="texture-image">
+  </div>
+  <div id="replace-button">Replace Texture</div>
+  <div id="texture-options">
+    <img src="../assets/textures/wood.jpg" data-texture="wood">
+    <img src="../assets/textures/leather.jpg" data-texture="leather">
+    <img src="../assets/textures/fabric.jpg" data-texture="fabric">
+  </div>
+  <script type="module" src="../complete/main.js"></script>
+</body>
+</html>
