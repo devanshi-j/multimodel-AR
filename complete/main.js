@@ -30,21 +30,19 @@ document.addEventListener('DOMContentLoaded', () => {
         document.body.appendChild(renderer.domElement);
         document.body.appendChild(arButton);
 
-        let model;
-        try {
-            model = await loadGLTF('../assets/models/coffee-table/scene.gltf');
-        } catch (error) {
-            console.error('Error loading model:', error);
-            return;
-        }
-
-        normalizeModel(model.scene, 0.5);
-        const chairGroup = new THREE.Group();
-        chairGroup.add(model.scene);
-        chairGroup.visible = false;
-        scene.add(chairGroup);
+        // Placeholder for model loading
+        const modelContainer = document.createElement('div');
+        modelContainer.id = 'modelContainer';
+        modelContainer.style.width = '100%';
+        modelContainer.style.height = '100%';
+        modelContainer.style.backgroundColor = 'rgba(0,0,0,0.5)'; // Semi-transparent background
+        modelContainer.innerHTML = '<p style="color: white; text-align: center; margin-top: 50%;">Loading model...</p>';
+        document.body.appendChild(modelContainer);
 
         const textureLoader = new THREE.TextureLoader();
+        const chairGroup = new THREE.Group();
+        chairGroup.visible = false;
+        scene.add(chairGroup);
 
         const updateTexture = (textureUrl) => {
             textureLoader.load(textureUrl, (texture) => {
@@ -74,6 +72,30 @@ document.addEventListener('DOMContentLoaded', () => {
             const selectedColor = event.target.value;
             updateColor(selectedColor);
         });
+
+        const loadModel = async () => {
+            try {
+                const model = await loadGLTF('../assets/models/coffee-table/scene.gltf');
+                normalizeModel(model.scene, 0.5);
+                chairGroup.add(model.scene);
+                modelContainer.style.display = 'none'; // Hide loading placeholder
+                chairGroup.visible = true;
+            } catch (error) {
+                console.error('Error loading model:', error);
+                modelContainer.innerHTML = '<p style="color: red; text-align: center;">Failed to load model</p>';
+            }
+        };
+
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    loadModel();
+                    observer.unobserve(entry.target); // Stop observing after loading
+                }
+            });
+        }, { threshold: 0.1 });
+
+        observer.observe(modelContainer);
 
         let prevTouchPosition = null;
         let touchDown = false;
@@ -127,11 +149,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 const referenceSpace = renderer.xr.getReferenceSpace();
                 const hitTestResults = frame.getHitTestResults(hitTestSource);
 
-                if (hitTestResults.length && !chairGroup.visible) {
+                if (hitTestResults.length && chairGroup.visible) {
                     const hit = hitTestResults[0];
                     const hitPose = hit.getPose(referenceSpace);
 
-                    chairGroup.visible = true;
                     chairGroup.position.setFromMatrixPosition(new THREE.Matrix4().fromArray(hitPose.transform.matrix));
                 }
 
