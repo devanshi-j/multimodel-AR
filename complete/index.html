@@ -8,28 +8,43 @@
     body {
       margin: 0;
       overflow: hidden;
+      position: relative;
     }
-    #configurator {
-      position: fixed;
+    #texture-manager {
+      position: absolute;
       top: 10px;
       left: 10px;
-      background-color: rgba(255, 255, 255, 0.8);
+      z-index: 1000;
+    }
+    #texture-list {
+      display: none;
+      margin-top: 10px;
+    }
+    #texture-list img {
+      width: 100px; /* Adjust size as needed */
+      margin-right: 5px;
+      cursor: pointer;
+    }
+    .button {
+      display: block;
+      margin-top: 10px;
       padding: 10px;
-      z-index: 10;
+      background-color: #007bff;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+    .button:hover {
+      background-color: #0056b3;
     }
   </style>
 </head>
 <body>
-  <div id="configurator">
-    <label for="textureSelect">Select Texture:</label>
-    <select id="textureSelect">
-        <option value="../assets/models/textures/tx1.jpg">Texture 1</option>
-        <option value="../assets/models/textures/tx2.jpg">Texture 2</option>
-        <option value="../assets/models/textures/tx3.jpg">Texture 3</option>
-    </select>
-    <br><br>
-    <label for="colorPicker">Pick Color:</label>
-    <input type="color" id="colorPicker" value="#ffffff">
+  <div id="texture-manager">
+    <button id="replace-button" class="button">Replace Texture</button>
+    <button id="remove-button" class="button">Remove Texture</button>
+    <div id="texture-list"></div>
   </div>
   <script type="module" src="../complete/main.js"></script>
 </body>
