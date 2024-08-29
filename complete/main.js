@@ -2,15 +2,40 @@ import { loadGLTF } from "../libs/loader.js";
 import * as THREE from '../libs/three123/three.module.js';
 import { ARButton } from '../libs/jsm/ARButton.js';
 
+// Cache for models
+const modelCache = {};
+
+// Normalize model size and position
 const normalizeModel = (obj, height) => {
     const bbox = new THREE.Box3().setFromObject(obj);
     const size = bbox.getSize(new THREE.Vector3());
     const scale = height / size.y;
 
-    // Centering the object
     const center = bbox.getCenter(new THREE.Vector3());
     obj.position.set(-center.x * scale, -center.y * scale, -center.z * scale);
     obj.scale.multiplyScalar(scale);
+};
+
+// Update texture for chairGroup
+const updateTexture = (textureUrl, chairGroup) => {
+    const textureLoader = new THREE.TextureLoader();
+    textureLoader.load(textureUrl, (texture) => {
+        chairGroup.traverse((child) => {
+            if (child.isMesh) {
+                child.material.map = texture;
+                child.material.needsUpdate = true;
+            }
+        });
+    });
+};
+
+// Update color for chairGroup
+const updateColor = (color, chairGroup) => {
+    chairGroup.traverse((child) => {
+        if (child.isMesh) {
+            child.material.color.set(color);
+        }
+    });
 };
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -30,67 +55,40 @@ document.addEventListener('DOMContentLoaded', () => {
         document.body.appendChild(renderer.domElement);
         document.body.appendChild(arButton);
 
-        // Placeholder for model loading
         const modelContainer = document.createElement('div');
         modelContainer.id = 'modelContainer';
         modelContainer.style.width = '100%';
         modelContainer.style.height = '100%';
-        modelContainer.style.backgroundColor = 'rgba(0,0,0,0.5)'; // Semi-transparent background
+        modelContainer.style.backgroundColor = 'rgba(0,0,0,0.5)';
         modelContainer.innerHTML = '<p style="color: white; text-align: center; margin-top: 50%;">Loading model...</p>';
         document.body.appendChild(modelContainer);
 
-        const textureLoader = new THREE.TextureLoader();
         const chairGroup = new THREE.Group();
         chairGroup.visible = false;
         scene.add(chairGroup);
 
-        const updateTexture = (textureUrl) => {
-            textureLoader.load(textureUrl, (texture) => {
-                chairGroup.traverse((child) => {
-                    if (child.isMesh) {
-                        child.material.map = texture;
-                        child.material.needsUpdate = true;
-                    }
-                });
-            });
-        };
-
-        const updateColor = (color) => {
-            chairGroup.traverse((child) => {
-                if (child.isMesh) {
-                    child.material.color.set(color);
-                }
-            });
-        };
-
-        document.getElementById('textureSelect').addEventListener('change', (event) => {
-            const selectedTexture = event.target.value;
-            updateTexture(`../assets/textures/${selectedTexture}`);
-        });
-
-        document.getElementById('colorPicker').addEventListener('input', (event) => {
-            const selectedColor = event.target.value;
-            updateColor(selectedColor);
-        });
-
+        // Load and cache model
         const loadModel = async () => {
-            try {
-                const model = await loadGLTF('../assets/models/coffee-table/scene.gltf');
-                normalizeModel(model.scene, 0.5);
-                chairGroup.add(model.scene);
-                modelContainer.style.display = 'none'; // Hide loading placeholder
-                chairGroup.visible = true;
-            } catch (error) {
-                console.error('Error loading model:', error);
-                modelContainer.innerHTML = '<p style="color: red; text-align: center;">Failed to load model</p>';
+            if (!modelCache['coffee-table']) {
+                try {
+                    const model = await loadGLTF('../assets/models/coffee-table/scene.gltf');
+                    normalizeModel(model.scene, 0.5);
+                    modelCache['coffee-table'] = model.scene;
+                } catch (error) {
+                    console.error('Error loading model:', error);
+                    modelContainer.innerHTML = '<p style="color: red; text-align: center;">Failed to load model</p>';
+                }
             }
+            chairGroup.add(modelCache['coffee-table']);
+            modelContainer.style.display = 'none';
+            chairGroup.visible = true;
         };
 
         const observer = new IntersectionObserver((entries) => {
             entries.forEach(entry => {
                 if (entry.isIntersecting) {
                     loadModel();
-                    observer.unobserve(entry.target); // Stop observing after loading
+                    observer.unobserve(entry.target);
                 }
             });
         }, { threshold: 0.1 });
@@ -156,17 +154,15 @@ document.addEventListener('DOMContentLoaded', () => {
                     chairGroup.position.setFromMatrixPosition(new THREE.Matrix4().fromArray(hitPose.transform.matrix));
                 }
 
-                // Handle interactions with the placed chair
                 if (touchDown && chairGroup.visible) {
                     const newPosition = controller.position.clone();
                     if (prevTouchPosition) {
                         const deltaX = newPosition.x - prevTouchPosition.x;
-                        chairGroup.rotation.y += deltaX * 6.0; // Faster rotation
+                        chairGroup.rotation.y += deltaX * 6.0;
                     }
                     prevTouchPosition = newPosition;
                 }
 
-                // Handling two-finger dragging
                 if (isDraggingWithTwoFingers && chairGroup.visible) {
                     const sources = session.inputSources;
                     const currentFingerPositions = [
@@ -183,7 +179,6 @@ document.addEventListener('DOMContentLoaded', () => {
                     initialFingerPositions = currentFingerPositions;
                 }
 
-                // Handling pinch to scale
                 if (isPinching && chairGroup.visible && initialDistance !== null) {
                     const sources = session.inputSources;
                     const currentDistance = Math.hypot(
@@ -196,7 +191,6 @@ document.addEventListener('DOMContentLoaded', () => {
                     initialDistance = currentDistance;
                 }
 
-                // Render the scene
                 renderer.render(scene, camera);
             });
         });
