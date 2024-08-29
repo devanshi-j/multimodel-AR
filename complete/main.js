@@ -44,29 +44,6 @@ document.addEventListener('DOMContentLoaded', () => {
         chairGroup.visible = false;
         scene.add(chairGroup);
 
-        // UI for configurator
-        const configuratorDiv = document.createElement('div');
-        configuratorDiv.id = 'configurator';
-        configuratorDiv.style.position = 'fixed';
-        configuratorDiv.style.top = '10px';
-        configuratorDiv.style.left = '10px';
-        configuratorDiv.style.backgroundColor = 'rgba(255, 255, 255, 0.8)';
-        configuratorDiv.style.padding = '10px';
-        configuratorDiv.innerHTML = `
-            <label for="textureSelect">Select Texture:</label>
-            <select id="textureSelect">
-                <option value="texture1.jpg">Texture 1</option>
-                <option value="texture2.jpg">Texture 2</option>
-                <option value="texture3.jpg">Texture 3</option>
-            </select>
-
-            <br><br>
-
-            <label for="colorPicker">Pick Color:</label>
-            <input type="color" id="colorPicker" value="#ffffff">
-        `;
-        document.body.appendChild(configuratorDiv);
-
         const textureLoader = new THREE.TextureLoader();
 
         const updateTexture = (textureUrl) => {
