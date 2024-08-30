@@ -10,27 +10,30 @@
       overflow: hidden;
       position: relative;
     }
-    #texture-manager {
+    #texture-buttons-container {
       position: absolute;
-      top: 10px;
-      left: 10px;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
       z-index: 1000;
-      background-color: rgba(255, 255, 255, 0.9);
-      padding: 10px;
-      border-radius: 8px;
-      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
     }
-    #texture-list {
+    #replace-remove-buttons {
       display: none;
-      margin-top: 10px;
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      z-index: 1000;
     }
-    #texture-list img {
-      width: 100px; /* Adjust size as needed */
-      margin-right: 5px;
-      cursor: pointer;
+    #new-choice-buttons-container {
+      display: none;
+      position: absolute;
+      top: 70%;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 1000;
     }
     .button {
-      display: block;
       margin-top: 10px;
       padding: 10px;
       background-color: #007bff;
@@ -38,7 +41,6 @@
       border: none;
       border-radius: 5px;
       cursor: pointer;
-      text-align: center;
     }
     .button:hover {
       background-color: #0056b3;
@@ -46,11 +48,12 @@
   </style>
 </head>
 <body>
-  <div id="texture-manager">
+  <div id="texture-buttons-container"></div>
+  <div id="replace-remove-buttons">
     <button id="replace-button" class="button">Replace Texture</button>
     <button id="remove-button" class="button">Remove Texture</button>
-    <div id="texture-list"></div>
   </div>
+  <div id="new-choice-buttons-container"></div>
   <script type="module" src="../complete/main.js"></script>
 </body>
 </html>
