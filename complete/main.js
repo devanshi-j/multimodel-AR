@@ -54,66 +54,47 @@ document.addEventListener('DOMContentLoaded', () => {
             3: '../assets/models/coffee-table/textures/tx3.jpg',
         };
 
-        const textureButtonsContainer = document.createElement('div');
-        textureButtonsContainer.style.position = 'absolute';
-        textureButtonsContainer.style.bottom = '20px';
-        textureButtonsContainer.style.left = '50%';
-        textureButtonsContainer.style.transform = 'translateX(-50%)';
-        document.body.appendChild(textureButtonsContainer);
-
-        const replaceRemoveButtons = document.createElement('div');
-        replaceRemoveButtons.style.display = 'none';
-        replaceRemoveButtons.style.position = 'absolute';
-        replaceRemoveButtons.style.top = '50%';
-        replaceRemoveButtons.style.left = '50%';
-        replaceRemoveButtons.style.transform = 'translate(-50%, -50%)';
-        document.body.appendChild(replaceRemoveButtons);
-
-        const newChoiceButtonsContainer = document.createElement('div');
-        newChoiceButtonsContainer.style.display = 'none';
-        newChoiceButtonsContainer.style.position = 'absolute';
-        newChoiceButtonsContainer.style.top = '70%';
-        newChoiceButtonsContainer.style.left = '50%';
-        newChoiceButtonsContainer.style.transform = 'translateX(-50%)';
-        document.body.appendChild(newChoiceButtonsContainer);
+        const textureManager = document.getElementById('texture-manager');
+        const replaceButton = document.getElementById('replace-button');
+        const removeButton = document.getElementById('remove-button');
+        const textureList = document.getElementById('texture-list');
 
         let selectedIndex = null;
 
+        // Display initial texture buttons
         Object.keys(materialIndices).forEach((index) => {
             const textureInfo = materialIndices[index];
 
             const textureButton = document.createElement('img');
             textureButton.src = textureInfo.preview;
-            textureButton.style.width = '80px';
-            textureButton.style.height = '80px';
-            textureButton.style.margin = '10px';
-            textureButtonsContainer.appendChild(textureButton);
+            textureButton.style.width = '100px'; // Match the width defined in the CSS
+            textureButton.style.height = '100px';
+            textureList.appendChild(textureButton);
 
             textureButton.addEventListener('click', () => {
-                replaceRemoveButtons.style.display = 'block';
                 selectedIndex = index;
+                textureList.style.display = 'none';
+                replaceButton.style.display = 'block';
+                removeButton.style.display = 'block';
             });
         });
 
-        const replaceButton = document.createElement('button');
-        replaceButton.innerText = 'Replace Texture';
+        // Replace texture functionality
         replaceButton.addEventListener('click', () => {
-            newChoiceButtonsContainer.style.display = 'block';
-            newChoiceButtonsContainer.innerHTML = ''; // Clear previous buttons
+            textureList.innerHTML = ''; // Clear previous texture buttons
 
             Object.keys(newChoiceTextures).forEach((index) => {
                 const newTextureButton = document.createElement('img');
                 newTextureButton.src = newChoiceTextures[index];
-                newTextureButton.style.width = '80px';
-                newTextureButton.style.height = '80px';
-                newTextureButton.style.margin = '10px';
-                newChoiceButtonsContainer.appendChild(newTextureButton);
+                newTextureButton.style.width = '100px';
+                newTextureButton.style.height = '100px';
+                textureList.appendChild(newTextureButton);
 
                 newTextureButton.addEventListener('click', () => {
                     if (selectedIndex !== null) {
                         const textureLoader = new THREE.TextureLoader();
                         coffeeTable.scene.traverse((child) => {
-                            if (child.isMesh && child.material instanceof Array) {
+                            if (child.isMesh && Array.isArray(child.material)) {
                                 const material = child.material[selectedIndex];
                                 if (material) {
                                     material.map = textureLoader.load(newChoiceTextures[index]);
@@ -121,32 +102,35 @@ document.addEventListener('DOMContentLoaded', () => {
                                 }
                             }
                         });
-                        replaceRemoveButtons.style.display = 'none';
-                        newChoiceButtonsContainer.style.display = 'none';
+                        replaceButton.style.display = 'none';
+                        removeButton.style.display = 'none';
+                        textureList.style.display = 'block';
                     }
                 });
             });
-        });
-        replaceRemoveButtons.appendChild(replaceButton);
 
-        const removeButton = document.createElement('button');
-        removeButton.innerText = 'Remove Texture';
+            replaceButton.style.display = 'none'; // Hide the replace button
+            removeButton.style.display = 'none'; // Hide the remove button
+            textureList.style.display = 'block'; // Show new texture choices
+        });
+
+        // Remove texture functionality
         removeButton.addEventListener('click', () => {
             if (selectedIndex !== null) {
                 coffeeTable.scene.traverse((child) => {
-                    if (child.isMesh && child.material instanceof Array) {
+                    if (child.isMesh && Array.isArray(child.material)) {
                         const material = child.material[selectedIndex];
                         if (material) {
-                            material.map = null;
+                            material.map = null; // Remove the texture
                             material.needsUpdate = true;
                         }
                     }
                 });
-                replaceRemoveButtons.style.display = 'none';
-                newChoiceButtonsContainer.style.display = 'none';
+                replaceButton.style.display = 'none';
+                removeButton.style.display = 'none';
+                textureList.style.display = 'block';
             }
         });
-        replaceRemoveButtons.appendChild(removeButton);
 
         renderer.setAnimationLoop(() => {
             renderer.render(scene, camera);
