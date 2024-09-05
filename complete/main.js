@@ -1,7 +1,7 @@
 import { loadGLTF } from "../libs/loader.js";
 import * as THREE from '../libs/three123/three.module.js';
 import { ARButton } from '../libs/jsm/ARButton.js';
-import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader.js';
+import { DRACOLoader } from '../libs/DRACOLoader.js';
 
 const normalizeModel = (obj, height) => {
     const bbox = new THREE.Box3().setFromObject(obj);
