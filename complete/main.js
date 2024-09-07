@@ -1,6 +1,7 @@
 import { loadGLTF } from "../libs/loader.js";
 import * as THREE from '../libs/three123/three.module.js';
 import { ARButton } from '../libs/jsm/ARButton.js';
+import { DRACOLoader } from '../libs/DRACOLoader.js';
 
 const normalizeModel = (obj, height) => {
     const bbox = new THREE.Box3().setFromObject(obj);
@@ -58,11 +59,21 @@ document.addEventListener('DOMContentLoaded', () => {
             const viewerReferenceSpace = await session.requestReferenceSpace("viewer");
             const hitTestSource = await session.requestHitTestSource({ space: viewerReferenceSpace });
 
-            // Lazy load the model only when AR session starts
-            const model = await loadGLTF('../assets/models/coffee-table/scene.gltf');
-            normalizeModel(model.scene, 0.5);
-            chair.add(model.scene);
-            chair.visible = false;  // Initially hidden until hit-test is successful
+            // Draco Loader Setup
+            const dracoLoader = new DRACOLoader();
+            dracoLoader.setDecoderPath('../libs/');
+            const loader = new THREE.GLTFLoader();
+            loader.setDRACOLoader(dracoLoader);
+
+            // Lazy load the model when AR session starts
+            try {
+                const model = await loadGLTF('../assets/models/coffee-table/scene.gltf');
+                normalizeModel(model.scene, 0.5);
+                chair.add(model.scene);
+                chair.visible = false;  // Initially hidden until hit-test is successful
+            } catch (error) {
+                console.error("Error loading model:", error);
+            }
 
             session.addEventListener('inputsourceschange', () => {
                 const sources = session.inputSources;
