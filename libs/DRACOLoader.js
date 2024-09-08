@@ -4,7 +4,7 @@ import {
 	Color,
 	FileLoader,
 	Loader,
-	LinearSRGBColorSpace,
+	//LinearSRGBColorSpace,
 	SRGBColorSpace
 } from '../libs/three123/three.module.js';
 
