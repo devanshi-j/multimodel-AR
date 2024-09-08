@@ -61,7 +61,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             // Draco Loader Setup
             const dracoLoader = new DRACOLoader();
-            dracoLoader.setDecoderPath('../libs/draco_decoder.wasm');
+            dracoLoader.setDecoderPath('../libs/');
             const loader = new THREE.GLTFLoader();
             loader.setDRACOLoader(dracoLoader);
 
