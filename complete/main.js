@@ -1,7 +1,8 @@
 import { loadGLTF } from "../libs/loader.js";
 import * as THREE from '../libs/three123/three.module.js';
 import { ARButton } from '../libs/jsm/ARButton.js';
-import { DRACOLoader } from '../libs/DRACOLoader.js';
+import { DRACOLoader } from '../libs/jsm/DRACOLoader.js';
+import { GLTFLoader } from '../libs/jsm/loaders/GLTFLoader.js';  // Correct import for GLTFLoader
 
 const normalizeModel = (obj, height) => {
     const bbox = new THREE.Box3().setFromObject(obj);
@@ -57,7 +58,7 @@ document.addEventListener('DOMContentLoaded', () => {
         // Draco Loader Setup
         const dracoLoader = new DRACOLoader();
         dracoLoader.setDecoderPath('../libs/');
-        const loader = new THREE.GLTFLoader();
+        const loader = new GLTFLoader();  // Using the correctly imported GLTFLoader
         loader.setDRACOLoader(dracoLoader);
 
         let modelLoaded = false;
