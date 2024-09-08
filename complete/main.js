@@ -31,7 +31,7 @@ document.addEventListener('DOMContentLoaded', () => {
         document.body.appendChild(arButton);
 
         const chair = new THREE.Group(); // Empty group to hold the model
-        chair.visible = false;
+        chair.visible = false; // Keep hidden initially
         scene.add(chair);
 
         let prevTouchPosition = null;
@@ -54,103 +54,34 @@ document.addEventListener('DOMContentLoaded', () => {
             prevTouchPosition = null;
         });
 
-        renderer.xr.addEventListener("sessionstart", async () => {
-            const session = renderer.xr.getSession();
-            const viewerReferenceSpace = await session.requestReferenceSpace("viewer");
-            const hitTestSource = await session.requestHitTestSource({ space: viewerReferenceSpace });
+        // Draco Loader Setup
+        const dracoLoader = new DRACOLoader();
+        dracoLoader.setDecoderPath('../libs/');
+        const loader = new THREE.GLTFLoader();
+        loader.setDRACOLoader(dracoLoader);
 
-            // Draco Loader Setup
-            const dracoLoader = new DRACOLoader();
-            dracoLoader.setDecoderPath('../libs/');
-            const loader = new THREE.GLTFLoader();
-            loader.setDRACOLoader(dracoLoader);
+        let modelLoaded = false;
 
-            // Lazy load the model when AR session starts
-            try {
-                const model = await loadGLTF('../assets/models/coffee-table/scene.gltf');
-                normalizeModel(model.scene, 0.5);
-                chair.add(model.scene);
-                chair.visible = false;  // Initially hidden until hit-test is successful
-            } catch (error) {
-                console.error("Error loading model:", error);
+        // Preload the model before the AR session starts
+        let model;
+        try {
+            model = await loadGLTF('../assets/models/coffee-table/scene.gltf');
+            normalizeModel(model.scene, 0.5);
+            chair.add(model.scene);
+            modelLoaded = true; // Mark as loaded
+        } catch (error) {
+            console.error("Error loading model:", error);
+        }
+
+        renderer.xr.addEventListener("sessionstart", () => {
+            if (modelLoaded) {
+                // Place the chair immediately in front of the camera
+                chair.visible = true;
+                chair.position.set(0, 0, -1.5); // 1.5 units in front of the camera
+                chair.scale.set(0.5, 0.5, 0.5); // Ensure appropriate scaling
             }
 
-            session.addEventListener('inputsourceschange', () => {
-                const sources = session.inputSources;
-                if (sources.length === 2) {
-                    isPinching = true;
-                    initialDistance = Math.sqrt(
-                        Math.pow(sources[0].gamepad.axes[0] - sources[1].gamepad.axes[0], 2) +
-                        Math.pow(sources[0].gamepad.axes[1] - sources[1].gamepad.axes[1], 2)
-                    );
-                    isDraggingWithTwoFingers = true;
-                    initialFingerPositions = [
-                        new THREE.Vector3(sources[0].gamepad.axes[0], sources[0].gamepad.axes[1], 0),
-                        new THREE.Vector3(sources[1].gamepad.axes[0], sources[1].gamepad.axes[1], 0)
-                    ];
-                } else {
-                    isPinching = false;
-                    isDraggingWithTwoFingers = false;
-                    initialDistance = null;
-                    initialFingerPositions = [];
-                }
-            });
-
-            renderer.setAnimationLoop((timestamp, frame) => {
-                if (!frame) return;
-
-                const referenceSpace = renderer.xr.getReferenceSpace();
-                const hitTestResults = frame.getHitTestResults(hitTestSource);
-
-                if (hitTestResults.length && !chair.visible) {
-                    const hit = hitTestResults[0];
-                    const hitPose = hit.getPose(referenceSpace);
-
-                    chair.visible = true;
-                    chair.position.setFromMatrixPosition(new THREE.Matrix4().fromArray(hitPose.transform.matrix));
-                }
-
-                // Handle interactions with the placed chair (coffee table model)
-                if (touchDown && chair.visible) {
-                    const newPosition = controller.position.clone();
-                    if (prevTouchPosition) {
-                        const deltaX = newPosition.x - prevTouchPosition.x;
-                        chair.rotation.y += deltaX * 6.0; // Faster rotation
-                    }
-                    prevTouchPosition = newPosition;
-                }
-
-                // Handling two-finger dragging
-                if (isDraggingWithTwoFingers && chair.visible) {
-                    const sources = session.inputSources;
-                    const currentFingerPositions = [
-                        new THREE.Vector3(sources[0].gamepad.axes[0], sources[0].gamepad.axes[1], 0),
-                        new THREE.Vector3(sources[1].gamepad.axes[0], sources[1].gamepad.axes[1], 0)
-                    ];
-
-                    const deltaX = (currentFingerPositions[0].x - initialFingerPositions[0].x + currentFingerPositions[1].x - initialFingerPositions[1].x) / 2;
-                    const deltaY = (currentFingerPositions[0].y - initialFingerPositions[0].y + currentFingerPositions[1].y - initialFingerPositions[1].y) / 2;
-
-                    chair.position.x += deltaX;
-                    chair.position.y += deltaY;
-
-                    initialFingerPositions = currentFingerPositions;
-                }
-
-                // Handling pinch to scale
-                if (isPinching && chair.visible && initialDistance !== null) {
-                    const sources = session.inputSources;
-                    const currentDistance = Math.sqrt(
-                        Math.pow(sources[0].gamepad.axes[0] - sources[1].gamepad.axes[0], 2) +
-                        Math.pow(sources[0].gamepad.axes[1] - sources[1].gamepad.axes[1], 2)
-                    );
-                    const scaleChange = currentDistance / initialDistance;
-                    chair.scale.multiplyScalar(scaleChange);
-
-                    initialDistance = currentDistance;
-                }
-
-                // Render the scene
+            renderer.setAnimationLoop(() => {
                 renderer.render(scene, camera);
             });
         });
